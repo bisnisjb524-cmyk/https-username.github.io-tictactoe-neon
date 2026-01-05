@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Tic Tac Toe Neon</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@500&display=swap');
+
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(to right, #0f0c29, #302b63, #24243e);
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    h1 {
+      font-size: 2.5rem;
+      margin-bottom: 20px;
+      text-shadow: 0 0 10px #00f0ff;
+    }
+
+    #modeSelector {
+      margin-bottom: 20px;
+      font-size: 1rem;
+      padding: 6px 12px;
+      border-radius: 6px;
+      border: none;
+      box-shadow: 0 0 8px #00f0ff;
+      background-color: rgba(0,240,255,0.1);
+      color: #00f0ff;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    #board {
+      display: grid;
+      grid-template-columns: repeat(3, 100px);
+      grid-template-rows: repeat(3, 100px);
+      gap: 10px;
+    }
+
+    .cell {
+      background: rgba(255, 255, 255, 0.05);
+      border: 2px solid #00f0ff;
+      border-radius: 10px;
+      font-size: 2.5rem;
+      font-weight: bold;
+      color: #00f0ff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 0 10px rgba(0, 240, 255, 0.4);
+      user-select: none;
+    }
+
+    .cell:hover {
+      background-color: rgba(0, 240, 255, 0.1);
+      transform: scale(1.05);
+    }
+
+    #message {
+      margin-top: 20px;
+      font-size: 1.5rem;
+      text-shadow: 0 0 8px #fff;
+      min-height: 2em;
+    }
+
+    #reset {
+      margin-top: 20px;
+      padding: 10px 20px;
+      font-size: 1rem;
+      border: none;
+      background-color: #00f0ff;
+      color: #000;
+      font-weight: bold;
+      border-radius: 8px;
+      cursor: pointer;
+      box-shadow: 0 0 10px #00f0ff, 0 0 20px #00f0ff;
+      transition: 0.3s;
+    }
+
+    #reset:hover {
+      background-color: #00d0dd;
+      box-shadow: 0 0 20px #00d0dd;
+    }
+
+    #creator {
+      margin-top: 25px;
+      font-family: 'Orbitron', monospace;
+      font-weight: 500;
+      font-size: 1.2rem;
+      color: #00f0ff;
+      text-shadow:
+        0 0 5px #00f0ff,
+        0 0 10px #00f0ff,
+        0 0 20px #00f0ff,
+        0 0 40px #00f0ff;
+      user-select: none;
+    }
+
+    @media (max-width: 400px) {
+      #board {
+        grid-template-columns: repeat(3, 80px);
+        grid-template-rows: repeat(3, 80px);
+      }
+
+      .cell {
+        font-size: 2rem;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Tic Tac Toe Neon</h1>
+
+  <select id="modeSelector" aria-label="Pilih mode permainan">
+    <option value="duo" selected>Duo (Main bersama teman)</option>
+    <option value="solo">Solo (Main lawan AI)</option>
+  </select>
+
+  <div id="board"></div>
+  <div id="message"></div>
+  <button id="reset">Main Lagi</button>
+
+  <div id="creator">Dibuat oleh RAFIF</div>
+
+  <script>
+    const board = document.getElementById('board');
+    const message = document.getElementById('message');
+    const resetBtn = document.getElementById('reset');
+    const modeSelector = document.getElementById('modeSelector');
+
+    let currentPlayer = 'X';
+    let cells = [];
+    let gameOver = false;
+    let mode = modeSelector.value;
+
+    function createBoard() {
+      board.innerHTML = '';
+      cells = [];
+      gameOver = false;
+      for (let i = 0; i < 9; i++) {
+        const cell = document.createElement('div');
+        cell.classList.add('cell');
+        cell.addEventListener('click', () => makeMove(i));
+        board.appendChild(cell);
+        cells.push(cell);
+      }
+      currentPlayer = 'X';
+      message.textContent = `Giliran: ${currentPlayer}`;
+    }
+
+    function makeMove(index) {
+      if (gameOver) return;
+      const cell = cells[index];
+      if (cell.textContent !== '') return;
+
+      cell.textContent = currentPlayer;
+
+      if (checkWinner()) {
+        message.textContent = `🎉 Pemain ${currentPlayer} Menang!`;
+        gameOver = true;
+        return;
+      } 
+      if (cells.every(c => c.textContent !== '')) {
+        message.textContent = '😐 Seri!';
+        gameOver = true;
+        return;
+      }
+
+      if (mode === 'duo') {
+        // Ganti pemain
+        currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
+        message.textContent = `Giliran: ${currentPlayer}`;
+      } else {
+        // Mode solo: AI jalan setelah player
+        currentPlayer = 'O';
+        message.textContent = `Giliran: ${currentPlayer} (AI)`;
+        setTimeout(aiMove, 700);
+      }
+    }
+
+    function aiMove() {
+      if (gameOver) return;
+      // Pilih cell kosong secara acak
+      const emptyIndices = cells.map((c, i) => c.textContent === '' ? i : -1).filter(i => i !== -1);
+      if (emptyIndices.length === 0) return;
+      const randIndex = emptyIndices[Math.floor(Math.random() * emptyIndices.length)];
+      cells[randIndex].textContent = currentPlayer;
+
+      if (checkWinner()) {
+        message.textContent = `🤖 AI (${currentPlayer}) Menang!`;
+        gameOver = true;
+        return;
+      }
+      if (cells.every(c => c.textContent !== '')) {
+        message.textContent = '😐 Seri!';
+        gameOver = true;
+        return;
+      }
+
+      currentPlayer = 'X';
+      message.textContent = `Giliran: ${currentPlayer}`;
+    }
+
+    function checkWinner() {
+      const winPatterns = [
+        [0,1,2],[3,4,5],[6,7,8],
+        [0,3,6],[1,4,7],[2,5,8],
+        [0,4,8],[2,4,6]
+      ];
+
+      return winPatterns.some(pattern => {
+        const [a, b, c] = pattern;
+        return cells[a].textContent &&
+               cells[a].textContent === cells[b].textContent &&
+               cells[a].textContent === cells[c].textContent;
+      });
+    }
+
+    resetBtn.addEventListener('click', () => {
+      mode = modeSelector.value;
+      createBoard();
+    });
+
+    modeSelector.addEventListener('change', () => {
+      mode = modeSelector.value;
+      createBoard();
+    });
+
+    createBoard();
+  </script>
+
+</body>
+</html>
