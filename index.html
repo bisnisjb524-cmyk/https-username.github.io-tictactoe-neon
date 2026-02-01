@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Tic Tac Toe – Cyber Arena FINAL</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&display=swap" rel="stylesheet">
+
+<style>
+*{box-sizing:border-box}
+html,body{
+  margin:0;height:100%;
+  font-family:Orbitron,system-ui;
+  background:radial-gradient(circle at top,#0c1a3a,#05070f 70%);
+  color:#fff;
+}
+body{display:flex;justify-content:center;align-items:center}
+
+/* UI */
+.container{width:360px}
+.box{
+  background:#000c;
+  padding:16px;
+  margin-bottom:14px;
+  border-radius:16px;
+  box-shadow:0 0 30px #00eaff55;
+  text-align:center;
+}
+input,button{
+  width:90%;margin:6px auto;padding:8px;
+  border-radius:8px;border:none;font-family:inherit
+}
+button{
+  cursor:pointer;
+  background:linear-gradient(135deg,#00eaff55,#7a5cff55);
+  color:#fff
+}
+.logout{background:#ff3b3b88}
+pre{text-align:left;font-size:.7rem}
+
+/* Game */
+#game{display:none}
+#hud{display:flex;justify-content:space-between;font-size:.7rem}
+#board{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:10px;
+  margin:12px auto
+}
+.cell{
+  height:90px;
+  border:2px solid #00eaff;
+  border-radius:10px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:2.2rem;
+  cursor:pointer;
+  transition:.2s
+}
+.cell:hover{transform:scale(1.05)}
+.cell.win{background:#00eaff33}
+.cell.locked{background:#300;pointer-events:none}
+
+.alert{color:#ff3b3b;text-shadow:0 0 10px #ff3b3b}
+body.hell{
+  background:radial-gradient(circle at top,#3a0000,#05070f 70%)
+}
+</style>
+</head>
+
+<body>
+<div class="container">
+
+<!-- USER LOGIN -->
+<div class="box" id="userLogin">
+  <h2>LOGIN USER</h2>
+  <input id="userU" placeholder="Username">
+  <input id="userP" type="password" placeholder="Password">
+  <button onclick="loginUser()">Login</button>
+  <div id="userMsg"></div>
+</div>
+
+<!-- ADMIN LOGIN -->
+<div class="box" id="adminLogin">
+  <h2>LOGIN ADMIN</h2>
+  <input id="adminU" placeholder="Admin Username">
+  <input id="adminP" type="password" placeholder="Admin Password">
+  <button onclick="loginAdmin()">Login</button>
+  <div id="adminMsg"></div>
+</div>
+
+<!-- ADMIN PANEL -->
+<div class="box" id="adminPanel" style="display:none">
+  <h3>ADMIN PANEL</h3>
+  <input id="oldU" placeholder="Username Lama">
+  <input id="newU" placeholder="Username Baru">
+  <input id="newP" placeholder="Password Baru">
+  <button onclick="addUser()">Tambah</button>
+  <button onclick="editUser()">Edit</button>
+  <button onclick="deleteUser()">Hapus</button>
+  <button class="logout" onclick="logout()">Logout</button>
+  <pre id="list"></pre>
+</div>
+
+<!-- GAME -->
+<div class="box" id="game">
+  <h2>CYBER ARENA</h2>
+
+  <div id="hud">
+    <div>PLAY: <span id="playLabel">HARD</span></div>
+    <div>MODE: <span id="modeLabel">RANKED</span></div>
+    <div>RANK: <span id="rank">1</span></div>
+  </div>
+
+  <div id="board"></div>
+  <div id="msg"></div>
+
+  <button onclick="setPlay('DUO')">2 Player</button>
+  <button onclick="setPlay('EASY')">AI Easy</button>
+  <button onclick="setPlay('HARD')">AI Ranked</button>
+  <button onclick="toggleHell()">Hell 😈</button>
+  <button onclick="startGame()">Restart</button>
+  <button class="logout" onclick="logout()">Logout</button>
+</div>
+
+</div>
+
+<script>
+/* ========= DATABASE ========= */
+const DB="TTT_DB";
+const enc=t=>btoa(t);
+if(!localStorage.getItem(DB)){
+  localStorage.setItem(DB,JSON.stringify([
+    {u:"rifat",p:enc("2012"),role:"user"},
+    {u:"rafif",p:enc("admin"),role:"admin"}
+  ]));
+}
+
+/* ========= AUTH ========= */
+function showLogin(){
+  userLogin.style.display="block";
+  adminLogin.style.display="block";
+  adminPanel.style.display="none";
+  game.style.display="none";
+}
+showLogin();
+
+function loginUser(){
+  const db=JSON.parse(localStorage.getItem(DB));
+  const ok=db.find(x=>x.u===userU.value && x.p===enc(userP.value) && x.role==="user");
+  if(!ok){userMsg.textContent="Login gagal";return;}
+  userLogin.style.display="none";
+  adminLogin.style.display="none";
+  game.style.display="block";
+  startGame();
+}
+
+function loginAdmin(){
+  const db=JSON.parse(localStorage.getItem(DB));
+  const ok=db.find(x=>x.u===adminU.value && x.p===enc(adminP.value) && x.role==="admin");
+  if(!ok){adminMsg.textContent="Login gagal";return;}
+  userLogin.style.display="none";
+  adminLogin.style.display="none";
+  adminPanel.style.display="block";
+  game.style.display="block";
+  refresh();
+  startGame();
+}
+
+function logout(){
+  document.body.classList.remove("hell");
+  showLogin();
+}
+
+/* ========= ADMIN ========= */
+function refresh(){
+  list.textContent=JSON.stringify(
+    JSON.parse(localStorage.getItem(DB)).map(x=>({user:x.u,role:x.role})),
+    null,2);
+}
+function addUser(){
+  let db=JSON.parse(localStorage.getItem(DB));
+  if(!newU.value||!newP.value||db.some(x=>x.u===newU.value))return;
+  db.push({u:newU.value,p:enc(newP.value),role:"user"});
+  localStorage.setItem(DB,JSON.stringify(db));
+  refresh();
+}
+function editUser(){
+  let db=JSON.parse(localStorage.getItem(DB));
+  let u=db.find(x=>x.u===oldU.value&&x.role==="user");
+  if(!u)return;
+  if(newU.value)u.u=newU.value;
+  if(newP.value)u.p=enc(newP.value);
+  localStorage.setItem(DB,JSON.stringify(db));
+  refresh();
+}
+function deleteUser(){
+  let db=JSON.parse(localStorage.getItem(DB));
+  db=db.filter(x=>!(x.u===oldU.value&&x.role==="user"));
+  localStorage.setItem(DB,JSON.stringify(db));
+  refresh();
+}
+
+/* ========= GAME ========= */
+const board=document.getElementById("board");
+const msg=document.getElementById("msg");
+let cells=[],over=false,current="X";
+
+const GAME={
+  play:"HARD", // DUO | EASY | HARD
+  hell:false,
+  xp:0,
+  rank:1
+};
+const BOSS={cd:0};
+
+function startGame(){
+  board.innerHTML="";
+  cells=[];over=false;current="X";
+  msg.textContent="Giliran X";
+  for(let i=0;i<9;i++){
+    const c=document.createElement("div");
+    c.className="cell";
+    c.onclick=()=>move(i);
+    board.appendChild(c);
+    cells.push(c);
+  }
+}
+
+function setPlay(p){
+  GAME.play=p;
+  playLabel.textContent=p;
+  startGame();
+}
+
+function toggleHell(){
+  GAME.hell=!GAME.hell;
+  modeLabel.textContent=GAME.hell?"HELL":"RANKED";
+  document.body.classList.toggle("hell",GAME.hell);
+  startGame();
+}
+
+function move(i){
+  if(over||cells[i].textContent||cells[i].dataset.locked)return;
+  cells[i].textContent=current;
+  if(checkWin(current))return end(current==="X");
+  if(full())return draw();
+
+  if(GAME.play==="DUO"){
+    current=current==="X"?"O":"X";
+    msg.textContent="Giliran "+current;
+    return;
+  }
+
+  if(current==="X"){
+    current="O";
+    setTimeout(aiMove,250);
+  }
+}
+
+function aiMove(){
+  if(over)return;
+  if(GAME.play==="EASY"){
+    randomAI();
+  }else{
+    if(GAME.hell)bossSkill();
+    smartAI();
+  }
+}
+
+function randomAI(){
+  let e=empty();if(!e.length)return;
+  let i=e[Math.floor(Math.random()*e.length)];
+  placeO(i);
+}
+function smartAI(){
+  let best=-999,m;
+  for(let i of empty()){
+    cells[i].textContent="O";
+    let s=minimax(false);
+    cells[i].textContent="";
+    if(s>best){best=s;m=i;}
+  }
+  placeO(m);
+}
+function placeO(i){
+  if(i==null)return;
+  cells[i].textContent="O";
+  if(checkWin("O"))return end(false);
+  if(full())return draw();
+  current="X";msg.textContent="Giliran X";
+}
+function minimax(max){
+  if(checkWin("O"))return 10;
+  if(checkWin("X"))return -10;
+  if(full())return 0;
+  let s=max?-999:999;
+  for(let i of empty()){
+    cells[i].textContent=max?"O":"X";
+    s=max?Math.max(s,minimax(!max)):Math.min(s,minimax(!max));
+    cells[i].textContent="";
+  }
+  return s;
+}
+
+function bossSkill(){
+  if(BOSS.cd>0){BOSS.cd--;return;}
+  if(Math.random()<0.3){
+    let i=empty()[0];
+    if(i!=null){
+      cells[i].dataset.locked=1;
+      cells[i].classList.add("locked");
+      setTimeout(()=>{
+        delete cells[i].dataset.locked;
+        cells[i].classList.remove("locked");
+      },1200);
+    }
+    BOSS.cd=3;
+    alertMsg("SYSTEM GLITCH");
+  }
+}
+
+function empty(){return cells.map((c,i)=>!c.textContent&&!c.dataset.locked?i:null).filter(i=>i!=null)}
+function full(){return cells.every(c=>c.textContent||c.dataset.locked)}
+function checkWin(p){
+  const w=[[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+  return w.some(a=>a.every(i=>cells[i].textContent===p)&&(a.forEach(i=>cells[i].classList.add("win")),1));
+}
+function end(win){
+  over=true;
+  if(GAME.play!=="DUO"){
+    GAME.xp+=win?30:10;
+    if(GAME.xp>=GAME.rank*100){
+      GAME.rank++;
+      rank.textContent=GAME.rank;
+      alertMsg("RANK UP");
+    }
+  }
+  msg.textContent=win?"KAMU MENANG":"KAMU KALAH";
+}
+function draw(){over=true;msg.textContent="SERI"}
+function alertMsg(t){
+  msg.textContent=t;
+  msg.classList.add("alert");
+  setTimeout(()=>msg.classList.remove("alert"),1200);
+}
+</script>
+</body>
+</html>
